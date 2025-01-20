@@ -21,7 +21,7 @@ Given these limitations and assumptions, I will make an initial baseline represe
 </ol>
 
 **Baseline Map as drawn from initial discussions**
-<img src = "C:\Users\varad\Desktop\Oxford\DPhil Cervical Cancer Scale-up\Code\Baseline_map_and_sim\AIIMS Bhopal baseline process map.png"/>
+<img src = 'AIIMS Bhopal baseline process map.png', alt = "AIIMS Bhopal baseline process map)
 
-![AIIMS Bhopal baseline process map](C:\Users\varad\Desktop\Oxford\DPhil Cervical Cancer Scale-up\Code\Baseline_map_and_sim\AIIMS Bhopal baseline process map.png)
+![AIIMS Bhopal baseline process map](AIIMS Bhopal baseline process map.png)
 
