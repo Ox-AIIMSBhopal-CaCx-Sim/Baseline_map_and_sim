@@ -164,7 +164,78 @@ class Ca_Cx_pathway (object):
             "Time_at_treatment" : []
         })
 
-        
+        #declaring system KPIs to be measured at the run level.
+        #Queue lengths for different processes
+        self.max_q_len_screen_processing = None
+        self.max_q_len_screen_reporting = None
+        self.max_q_len_colposcopy = None
+        self.max_q_len_colposcopy_processing = None
+        self.max_q_len_colposcopy_reporting = None
+        self.max_q_len_treatment = None
+
+        #Resource utilization percentages
+        self.gynae_residents_utilisation = None
+        self.gynae_consultants_utlisation = None
+        self.cytotechnician_utilisation = None
+        self.pathologist_utilisation = None
+    
+    def gen_patient_arrival(self):
+        '''
+        Generates a fictional patient according to a distribution, they undergo and OPD, this generates a sample which undergoes processing, after results are
+        conveyed, if positive, patient only then moves on to the next step i.e. colposcopy.
+        '''
+
+
+    def gen_screen_sample(self):
+            '''
+            Generates a screening sample, in this case a pap smear. This undergoes processing and reporting, after results are conveyed, 
+            '''
+
+    def screen_sample_processing(self):
+            '''
+            Sample undergoes processing
+            '''
+
+    def screen_sample_reporting(self):
+        '''
+        Processed sample is interpreted and reported by pathologist
+        '''
+
+    def colposcopy(self, patient):
+        '''
+        Patient that was generated undergoes colposcopy
+        '''
+
+    def biopsy_sample_processing(self):
+        '''
+        Biopsy sample if prepared undergoes processing
+        '''
+    
+    def biopsy_sample_reporting(self):
+        '''
+        Biopsy sample if taken undergoes reporting after processing
+        '''
+
+    def thermal_ablation(self, patient):
+        '''
+        If indicated, pt undergoes thermal ablation
+        '''
+
+    def leep (self,patient):
+        '''
+        if indicated, patient undergoes LEEP
+        '''
+
+    def hysterectomy (self,patient):
+        '''
+        if indicated, patient undergoes hysterectomy
+        '''
+
+
+
+
+
+
 
 class summary_statistics(object):
     '''
