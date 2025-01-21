@@ -26,7 +26,7 @@ class parameters (object):
     '''
 
     pt_per_day = None #Number of patients that visit the Gynae OPD every day (derived from AIIMS Bhopal Annual Report)(This could also be capped for a day if there are limited spots)
- 
+    pt_interarrival_time = None #Number of minutes in a working day / number of total patients expected during the day
     #modifiable factors, will be defined again in the relevant class
     #resources 
     #Staff
@@ -38,10 +38,9 @@ class parameters (object):
 
     #Stuff
     num_pap_kits = None #number of kits that the hospital has to perform a pap smear (ayre's spatula, glass slide, preservative and box)
-    num_screening_consumables = None #consumables required for screening
     num_pathology_consumables = None #consumables required for processing the pathological specimen
     num_colposcopy_consumables = None #consumables required for conducting colposcopy
-    num_leep_consumables = None #consumables required for LEEP
+    num_thermal_consumables = None #consumables required for LEEP
     num_ot_consumables = None #consumables required for hysterectomy
 
 
@@ -52,12 +51,18 @@ class parameters (object):
     #service times
     history_exam_time = None #time taken to complete history and examination per patient (Imp thing to remember here would be that this might change as the system adapts
                             #to an excess load)
-    sample_processing_time = None #time it takes from the sample is generated to the sample is prepared by cytotechnicians and ready for interpretation
-    sample_reporting_time = None # time taken by pathologists to report the results of a processed sample
+    path_processing_time = None #time it takes from the sample is generated to the sample is prepared by cytotechnicians and ready for interpretation
+    path_reporting_time = None # time taken by pathologists to report the results of a processed sample
     colposcopy_time = None #time taken to perform 1 colposcopy
-    leep_time = None #time taken for 1 Loop Electrosurgical Excision procedure
+    thermal_time = None #time taken for 1 Loop Electrosurgical Excision procedure
     hysterectomy_time = None #time taken for 1 hysterectomy
 
+    #Epidemiological parameters
+    screen_positivity_rate = None #% of positive samples (True positive + false positive / total samples)
+    biopsy_rate = None # % of all colposcopies that undergo a biopsy
+    biopsy_cin_rate = None # % of biopsies that are CIN
+    biopsy_cacx_rate = None # % of biopsies that are CaCx
+    follow_up_rate = None # % of women who follow up after a positive screen result (My own meta analysis + local data)
 
 class scheduled_resource(simpy.Resource):
     '''
@@ -113,10 +118,36 @@ class ca_cx_patient (object):
         '''
         self.pt_id = pt_id
         #declaring the variables to be recorded
-        self.time_entered = None #time when the patient entered into the OPD room
-        self.time_screen_result = None #time when the patient first received the screening result
-        self.time_colposcopy = None #time when the patient attended the colposcopy clinic
-        self.time_treatment = None #time when patient got the treatment, either admission or surgery or LEEP or thermal/cryo
+        self.time_at_entered = None #time when the patient entered into the OPD room
+        self.time_at_screen_result = None #time when the patient first received the screening result
+        self.time_at_colposcopy = None #time when the patient attended the colposcopy clinic
+        self.time_at_treatment = None #time when patient got the treatment, either admission or surgery or LEEP or thermal/cryo
+        self.history_examination_service_time = None
+        self.colposcopy_service_time = None
+        self.treatment_service_time = None
+
+class screen_sample(object):
+    '''
+    This class creates an instance of a screening sample object that undergoes processing and reporting
+    '''
+    def __init__(self, ss_id):
+        self.screen_sample_id = ss_id #sample id is the same as the patient id, when creating an instance of the sample id, make sure to enter patient id 
+
+        #declaring variables that will be recorded later on
+        self.screen_sample_processing_time = None
+        self.screen_sample_reporting_time = None
+
+
+class biopsy_sample(object):
+    '''
+    This class generates an instance of a biopsy sample object that undergoes processing and reporting
+    '''
+    def __init__(self, bs_id):
+        self.biopsy_sample_id = bs_id #sample id is the same as the patient id, when creating an instance of the biopsy sample id, 
+                                        #make sure to enter patient id 
+
+        self.biopsy_sample_processing_time = None
+        self.biopsy_sample_reporting_time = None
 
 
 class Ca_Cx_pathway (object):
@@ -136,6 +167,7 @@ class Ca_Cx_pathway (object):
         self.colposcopy_schedule = [] #list of integers form 0-6 for each day of the week that resource is available
         self.ot_schedule = []  #list of integers from 0-6 for each day of the week that resource is available
         
+        self.pt_counter = None #acts as the UHID of the patient
         #declaring resources
         #staff
         self.gynae_residents = simpy.Resource(self.env, capacity=num_gynae_residents)
@@ -145,10 +177,9 @@ class Ca_Cx_pathway (object):
 
         #stuff
         self.pap_kit = simpy.Resource(self.env, capacity=parameters.num_pap_kits)
-        self.screening_consumables = simpy.Resource(self.env, capacity=parameters.num_screening_consumables)
         self.pathology_consumables = simpy.Resource(self.env, capacity=parameters.num_pathology_consumables)
         self.colposcopy_consumables = simpy.Resource(self.env, capacity=parameters.num_colposcopy_consumables)
-        self.leep_consumables = simpy.Resource(self.env, capacity=parameters.num_leep_consumables)
+        self.thermal_consumables = simpy.Resource(self.env, capacity=parameters.num_thermal_consumables)
         self.ot_consumables = simpy.Resource(self.env, capacity=parameters.num_ot_consumables)
 
         #rooms (scheduled resource)
@@ -161,7 +192,12 @@ class Ca_Cx_pathway (object):
             "Time_Entered_in System":[],
             "Time_at_screening_result":[],
             "Time_at_colposcopy" : [],
-            "Time_at_treatment" : []
+            "Time_at_treatment" : [],
+            "History and Examination time": [], #also recording service times as they will ultimately be added up to calculate resource utilisation percentage
+            "screen_processing_time":[],
+            "Screen_reporting_time":[],
+            "Colposcopy_time":[],
+            "Treatment_time":[],
         })
 
         #declaring system KPIs to be measured at the run level.
@@ -179,58 +215,194 @@ class Ca_Cx_pathway (object):
         self.cytotechnician_utilisation = None
         self.pathologist_utilisation = None
     
+    def is_within_working_hours(self):
+        '''
+        checks whether the current simulation time is within working hours and returns a boolean
+        '''
+        current_sim_mins = self.env.now
+        day_mins = 24*60
+        current_sim_hour = int((current_sim_mins%day_mins)/60)
+        return 8 < current_sim_hour < 17
+
+
+
     def gen_patient_arrival(self):
         '''
         Generates a fictional patient according to a distribution, they undergo and OPD, this generates a sample which undergoes processing, after results are
         conveyed, if positive, patient only then moves on to the next step i.e. colposcopy.
         '''
+        while True:
+        #check time of day, 
+            if self.is_within_working_hours:
+        #if time of day is appropriate then generate the patient
+                self.patient = ca_cx_patient(self.pt_counter)
+                self.pt_counter += 1
+        #record necessary timepoints
+                self.patient.time_entered = self.env.now
+        #patient moves to the OPD
+                self.env.process(self.history_examination(self.patient))
+        #time for next patient arrival
+                wait_time_for_next_pt = random.expovariate(1/parameters.pt_interarrival_time)
+                yield self.env.timeout(wait_time_for_next_pt)
+
+    def history_examination(self, patient):
+        '''
+        Patient undergoes history and examination and in the process also generates the screening sample
+        '''
+        #request for a resident and consumables for sample collection and wait for them to be available
+        with self.gynae_residents.request() as gynae_res, self.pap_kit.request() as pap, self.screening_consumables as scr_consum :
+            yield gynae_res and pap and scr_consum
+        
+        #patient undergoes history, examination and sample collection
+            history_examination_time = random.triangular(parameters.history_exam_time/2, parameters.history_exam_time, parameters.history_exam_time *2 )
+            yield self.env.timeout(history_examination_time)
+
+            #generate a screening sample
+            self.screening_sample = screen_sample(patient.pt_id) #screen sample id is the same as the patient id
+            #sample goes on for processing
+            self.env.process(self.screen_sample_processing(self.screening_sample))
 
 
-    def gen_screen_sample(self):
-            '''
-            Generates a screening sample, in this case a pap smear. This undergoes processing and reporting, after results are conveyed, 
-            '''
+    def screen_sample_processing(self, screening_sample):
+        '''
+        Sample undergoes processing
+        '''
+        #request resources and wait for them to be available
+        with self.cytotechnician.request() as cytotec, self.pathology_consumables.request() as scr_proc_consum:
+            yield cytotec and scr_proc_consum
+        
+        #sample undergoes processing
+            screen_sample_processing_time = random.triangular(parameters.path_processing_time/2, parameters.path_processing_time, parameters.path_processing_time *2)
+            yield self.env.timeout(screen_sample_processing_time)
+        #sample goes for reporting
+            self.env.process(self.screen_sample_reporting(self.screening_sample))
 
-    def screen_sample_processing(self):
-            '''
-            Sample undergoes processing
-            '''
-
-    def screen_sample_reporting(self):
+    def screen_sample_reporting(self, screening_sample):
         '''
         Processed sample is interpreted and reported by pathologist
         '''
+        #request for a pathologist and wait until 
+        with self.pathologist.request() as path:
+            yield path
 
-    def colposcopy(self, patient):
+        #record the current time as an important milestone
+            self.patient.time_at_screen_result = self.env.now
+        
+        #sample undergoes reporting
+            screen_sample_reporting_time = random.triangular(parameters.path_reporting_time/2, parameters.path_reporting_time, parameters.path_reporting_time * 2)
+            yield self.env.timeout(screen_sample_reporting_time)
+
+        #if sample is positive, move on to follow up, otherwise terminate
+            if random.random() < parameters.screen_positivity_rate:
+                self.env.process(self.call_for_follow_up())
+
+    def call_for_follow_up (self, screen_sample):
+        '''
+        Gynaecology residents 
+        '''
+        #request a gynae_res (later on could modify to include a receptionist or another health cadre)
+        with self.gynae_residents.request() as gynae_res:
+            yield gynae_res
+        
+        # whether the patient returns or not
+            if random.random < parameters.follow_up_rate:
+            #patient goes on for colposcopy
+                self.env.process(self.colposcopy(self.patient))
+        #instantaneous process so no timeout really and also not a service
+
+    def colposcopy(self):
         '''
         Patient that was generated undergoes colposcopy
         '''
+        #requests for a consultant, consumables and a room
+        with self.gynae_consultants.request() as gynae_consul, self.colposcopy_consumables.request() as gynae_consumables, self.colposcopy_room.request() as colpo_room:
+            yield gynae_consul and gynae_consumables and colpo_room
 
-    def biopsy_sample_processing(self):
+        #Record time at colposcopy
+            self.patient.time_at_colposcopy = self.env.now
+
+        #check if biopsy is performed or not
+            if random.random() < parameters.biopsy_rate:
+                pt_biopsy_sample = biopsy_sample(self.patient.pt_id) #generate a biosy sample that will go for processing  
+                #biosy sample goes for processing
+                self.env.process(self.biopsy_sample_processing(pt_biopsy_sample))
+        
+
+
+    def biopsy_sample_processing(self, biopsy_sample):
         '''
         Biopsy sample if prepared undergoes processing
         '''
-    
-    def biopsy_sample_reporting(self):
+        #requests a cytotechnicians and consumables
+        with self.cytotechnician.request() as cytotec, self.pathology_consumables.request() as path_consum:
+            yield cytotec and path_consum
+
+            #biopsy sample undergoes processing
+            biopsy_sample_processing_time = random.triangular(parameters.path_processing_time/2, parameters.path_processing_time, parameters.path_processing_time * 2)    
+            yield self.env.timeout(biopsy_sample_processing_time)
+
+            #biopsy sample goes for reporting
+            self.env.process(self.biopsy_sample_reporting(biopsy_sample))
+
+
+    def biopsy_sample_reporting(self, biopsy_sample):
         '''
         Biopsy sample if taken undergoes reporting after processing
         '''
+        #requests a pathologist
+        with self.pathologist.request() as path:
+            yield path
+
+            #biopsy sample undergoes reporting
+            biopsy_sample_reporting_time = random.triangular(parameters.path_reporting_time/2, parameters.path_reporting_time, parameters.path_reporting_time *2)
+            yield self.env.timeout(biopsy_sample_reporting_time)
+
+            #depending on the diagnosis, patient either goes for thermal ablation or hysterectomy (currently, only making 2 options available, have the option of adding more on later)
+            biopsy_result = random.random()
+            if biopsy_result < parameters.biopsy_cin_rate:
+                self.env.process(self.thermal_ablation(self.patient)) #diagnosed with CIN
+            
+            elif parameters.biopsy_cin_rate < biopsy_result < parameters.biopsy_cacx_rate:
+                self.env.process(self.hysterectomy(self.patient)) #diagnosed with cervical cancer
+            
+            else:
+                self.patient.time_at_treatment = self.env.now #patient exits the system
 
     def thermal_ablation(self, patient):
         '''
         If indicated, pt undergoes thermal ablation
         '''
+        #requests resources required for thermal ablation
+        with self.gynae_consultants.request() as gynae_consul, self.thermal_consumables.request() as thermal_consum, self.colposcopy_room as colpo_room:
+            yield gynae_consul and thermal_consum and colpo_room
+
+        #patient undergoes thermal ablation
+            thermal_ablation_time = random.triangular(parameters.thermal_time/2, parameters.thermal_time, parameters.thermal_time *2)
+            yield self.env.timeout(thermal_ablation_time)
+
+        #patient exits the system
+            self.patient.time_at_treatment = self.env.now
 
     def leep (self,patient):
         '''
         if indicated, patient undergoes LEEP
         '''
-
+        #Not being implemented in this first version of the model
+        pass 
     def hysterectomy (self,patient):
         '''
         if indicated, patient undergoes hysterectomy
         '''
+        #request for a ot room and other equipment
+        with self.gynae_consultants.request() as gynae_consul, self.ot_consumables.request() as ot_consum, self.ot_room as ot_room:
+            yield gynae_consul and ot_consum and ot_room
 
+            #patient undergoes surgery
+            hysterectomy_time = random.triangular(parameters.hysterectomy_time/2, parameters.hysterectomy_time, parameters.hysterectomy_time *2)
+            yield self.env.timeout(hysterectomy_time)
+
+            #patient exits the system
+            
 
 
 
