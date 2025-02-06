@@ -1,34 +1,34 @@
 List of Parameters,,,
 Name of Parameter,Definition,Value,Justification
 Simulation Parameters,,,
-number_of_runs,Number of simulations in 1 experiment,10,
-pt_per_day,Mean (lambda) of patients that arrive every day (Exponential distribution,10,
-pt_interarrival_time,Mean time between arrival of 2 patients (Poisson Process),48 minutes,
-run_time,Total time for 1 simulation,4800 mins (10 days),
+number_of_runs,Number of simulations in 1 experiment,100,Standard convention
+Gynae Pt Interarrival time,Mean (lambda) of patients that arrive every day (Exponential distribution,3 minutes,AIIMS Bhopal Annual Report
+Path Patient Interarrival Time,Mean time between arrival of 2 patients (Poisson Process),0.5 minutes,AIIMS Bhopal Annual Report
+run_time,Total time for 1 simulation,1051200 minutes,2 years
 Resources,,,
 Staff,,,
-gynae_resident,Number of Gynaecological Residents,4,
-gynae_consulant,Number of Gynaecological Consulants,2,
-pathologists,Number of Pathologists,2,
-cytotechnicians,Number of Cytotechnicians,4,
+gynae_resident,Number of Gynaecological Residents,31,
+gynae_consulant,Number of Gynaecological Consulants,8,
+pathologists,Number of Pathologists,11,
+cytotechnicians,Number of Cytotechnicians,9,
 Stuff,,,
 num_pap_kits,Number of Pap smear kits,50,"These are not the limiting variables here and hence have been given high values, they are also not being monitored"
 num_pathology_consumables,Number of consumables required for processing of pathology samples,50,
 num_colposcopy_consumables,Number of sonsumables required for colposcopy,50,
 num_thermal_consumables,Number of consumables required for thermal ablation,50,
 num_ot_consumables,Number of consumables required in 1 operation in the Operation Theatre,50,
-num_colposcopy_rooms,Number of colposcopy rooms available,3,"These are being monitored however, hence limited"
-num_ot_rooms,Number of Operation theatres available,3,
+num_colposcopy_rooms,Number of colposcopy rooms available,2,AIIMS Bhopal Annual Report
+num_ot_rooms,Number of Operation theatres available,2,AIIMS Bhopal Annual Report
 Service Times for different processes,,,
 history_exam_time,Mean time taken to perform 1 history and examination (triangular distribution),25,"Projected health workforce requirements and shortage for addressing the disease burden in the WHO Africa Region, 2022–2030: a needs-based modelling study"
-path_processing_time,Mean time taken to process 1 pathology sample (triangular distribution),30,
-path_reporting_time,Mean time taken to report a pathology sample (triangular distribution),30,
-colposcopy_time,Mean time taken to perform 1 colposcopy (triangular distribution),25,
-thermal_time,Mean time taken to perform 1 thermal ablation (triangular distribution),25,
-hysterectomy_time,Mean time taken to perform 1 hysterectomy (triangular distribution),50,
+path_processing_time,Mean time taken to process 1 pathology sample (triangular distribution),30,"Projected health workforce requirements and shortage for addressing the disease burden in the WHO Africa Region, 2022–2030: a needs-based modelling study"
+path_reporting_time,Mean time taken to report a pathology sample (triangular distribution),30,"Projected health workforce requirements and shortage for addressing the disease burden in the WHO Africa Region, 2022–2030: a needs-based modelling study"
+colposcopy_time,Mean time taken to perform 1 colposcopy (triangular distribution),25,"Projected health workforce requirements and shortage for addressing the disease burden in the WHO Africa Region, 2022–2030: a needs-based modelling study"
+thermal_time,Mean time taken to perform 1 thermal ablation (triangular distribution),25,"Projected health workforce requirements and shortage for addressing the disease burden in the WHO Africa Region, 2022–2030: a needs-based modelling study"
+hysterectomy_time,Mean time taken to perform 1 hysterectomy (triangular distribution),50,"Projected health workforce requirements and shortage for addressing the disease burden in the WHO Africa Region, 2022–2030: a needs-based modelling study"
 Epidemiological Parameters,,,
-screen_positivity_rate,Percent of positive results out of total samples,2%,Based on Meta analysis done by self
+screen_positivity_rate,Percent of positive results out of total samples,2%,Unpublished meta-analysis results
 biopsy_rate,Ratio of patients that have a biopsy taken out of all who have a colposcopy,40%,
 biopsy_cin_rate,Ratio of biopsies positive for CIN,60%,
 biopsy_cacx_rate,Ratio of biopsies positive for Cervical Cancer,2%,
-follow_up_rate,Ratio of people who follow up after a positive screen,65%,
+follow_up_rate,Ratio of people who follow up after a positive screen,65%,Unpublished meta-analysis results
