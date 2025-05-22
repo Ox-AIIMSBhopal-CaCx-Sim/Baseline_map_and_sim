@@ -29,7 +29,7 @@ class parameters (object):
     output_line_no = 0
 
     experiment_no = 0 #incremented every time the main function is called
-    number_of_runs = 10 #Total number of times the simulation will run for 1 experiment
+    number_of_runs = 100 #Total number of times the simulation will run for 1 experiment
 
     #pt_per_day = 10 #Number of patients that visit the Gynae OPD every day (derived from AIIMS Bhopal Annual Report)(This could also be capped for a day if there are limited spots)
     obs_gynae_pt_arr_time = 3 #Number of minutes in a working day / number of total patients expected during the day
